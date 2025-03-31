@@ -16,11 +16,11 @@ class TideBot(discord.Client):
 
     async def setup_hook(self):
         # 註冊 slash command
-        self.tree.add_command(get_tide)
+        self.tree.add_command(tide)
         await self.tree.sync()
 
-@discord.app_commands.command(name="getTide", description="取得台灣當日潮汐資訊")
-async def get_tide(interaction: discord.Interaction):
+@discord.app_commands.command(name="tide", description="取得台灣當日潮汐資訊")
+async def tide(interaction: discord.Interaction):
     # 使用當日日期，格式為 YYYY-MM-DD
     today = datetime.now().strftime("%Y-%m-%d")
     tide_info = get_tide_data(today)
