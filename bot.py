@@ -4,6 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime
+from zoneinfo import ZoneInfo  # Python 3.9+ 內建的時區模組
 import logging
 
 from tide_api import get_tide_data
@@ -61,8 +62,6 @@ class RegionSelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         location_id = self.values[0]
-        # 由於 Option 的 label為地區名稱，可一併顯示給使用者
-        selected_region = self.values[0]  # 不過 value 已是 location_id，因此要反查地區名稱
         # 反查選擇的地區名稱（在該縣市的 list 中搜尋）
         region_name = None
         for reg, loc in LOCATION_MAP[self.county]:
@@ -70,8 +69,8 @@ class RegionSelect(discord.ui.Select):
                 region_name = reg
                 break
         logging.debug(f"使用者在 {self.county} 選擇地區：{region_name} (Location ID: {location_id})")
-        # 使用今日日期來查詢潮汐資訊
-        today = datetime.now().strftime("%Y-%m-%d")
+        # 使用台灣時區取得今日日期，格式為 YYYY-MM-DD
+        today = datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y-%m-%d")
         tide_info = get_tide_data(today, location_id)
         # 回覆最終結果（可自行調整訊息格式）
         await interaction.response.edit_message(content=f"【{self.county} {region_name}】\n{tide_info}", view=None)
