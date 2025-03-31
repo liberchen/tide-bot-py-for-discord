@@ -2,9 +2,12 @@
 import os
 import requests
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import discord
 
 
-def get_tide_data(date_str: str, location_id: str) -> str:
+def get_tide_data(date_str: str, location_id: str) -> discord.Embed:
     TIDE_API_KEY = os.environ.get("TIDE_API_KEY")
     if TIDE_API_KEY:
         logging.debug("TIDE_API_KEY 已成功載入。")
@@ -36,32 +39,53 @@ def get_tide_data(date_str: str, location_id: str) -> str:
                 daily = time_periods.get("Daily", [])
                 if daily:
                     daily_record = daily[0]
-                    date = daily_record.get("Date")
+                    date_api = daily_record.get("Date")
                     lunar_date = daily_record.get("LunarDate")
                     tide_range = daily_record.get("TideRange")
                     tide_times = daily_record.get("Time", [])
 
-                    message = f"日期：{date}\n農曆：{lunar_date}\n潮汐範圍：{tide_range}\n\n"
-                    message += "各時段潮汐資訊：\n"
+                    # 建立 Embed 物件，並設定標題、描述與顏色（藍色）
+                    title = f"潮汐預報 {date_api}"
+                    description = f"農曆：{lunar_date}\n潮汐範圍：{tide_range}"
+                    embed = discord.Embed(title=title, description=description, color=0x3498DB)
+
+                    # 建立表格字串（使用 code block 模擬）
+                    header = f"{'時間':<6} {'狀態':<8} {'台灣高程':<10} {'當地海平':<10} {'海圖':<8}\n"
+                    separator = "-" * 45 + "\n"
+                    rows = ""
                     for tide in tide_times:
-                        tide_time = tide.get("DateTime")
-                        tide_type = tide.get("Tide")
+                        dt_str = tide.get("DateTime")
+                        try:
+                            dt = datetime.fromisoformat(dt_str)
+                            # 轉換成僅顯示「幾點幾分」
+                            time_formatted = dt.strftime("%H:%M")
+                        except Exception as e:
+                            logging.error(f"時間格式轉換失敗：{e}")
+                            time_formatted = dt_str
+                        tide_status = tide.get("Tide")
                         heights = tide.get("TideHeights", {})
-                        message += f"  時間：{tide_time} - {tide_type}\n"
-                        message += f"    相對台灣高程系統 (AboveTWVD): {heights.get('AboveTWVD')}\n"
-                        message += f"    相對當地平均海平面 (AboveLocalMSL): {heights.get('AboveLocalMSL')}\n"
-                        message += f"    相對海圖 (AboveChartDatum): {heights.get('AboveChartDatum')}\n"
-                    logging.debug("潮汐資料解析完成。")
-                    return message
+                        # 取得各項潮高數據
+                        above_twvd = heights.get("AboveTWVD", "N/A")
+                        above_local = heights.get("AboveLocalMSL", "N/A")
+                        above_chart = heights.get("AboveChartDatum", "N/A")
+
+                        # 建立一行資料
+                        row = f"{time_formatted:<6} {tide_status:<8} {above_twvd:<10} {above_local:<10} {above_chart:<8}\n"
+                        rows += row
+                    table = "```" + header + separator + rows + "```"
+                    embed.add_field(name="潮汐資訊", value=table, inline=False)
+
+                    logging.debug("潮汐資料解析完成並建立 Embed。")
+                    return embed
                 else:
                     logging.warning("查無當日潮汐資料。")
-                    return "無法取得當日潮汐資料"
+                    return discord.Embed(title="錯誤", description="無法取得當日潮汐資料", color=0xE74C3C)
             else:
                 logging.warning("查無潮汐預報資料。")
-                return "無法取得潮汐預報資料"
+                return discord.Embed(title="錯誤", description="無法取得潮汐預報資料", color=0xE74C3C)
         else:
             logging.error("API 回傳狀態失敗。")
-            return "API 回傳狀態失敗"
+            return discord.Embed(title="錯誤", description="API 回傳狀態失敗", color=0xE74C3C)
     except Exception as e:
         logging.error(f"API 請求發生錯誤：{e}")
-        return f"發生錯誤：{e}"
+        return discord.Embed(title="錯誤", description=f"發生錯誤：{e}", color=0xE74C3C)

@@ -69,11 +69,11 @@ class RegionSelect(discord.ui.Select):
                 region_name = reg
                 break
         logging.debug(f"使用者在 {self.county} 選擇地區：{region_name} (Location ID: {location_id})")
-        # 使用台灣時區取得今日日期，格式為 YYYY-MM-DD
+        # 使用台灣時區取得今日日期
         today = datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y-%m-%d")
-        tide_info = get_tide_data(today, location_id)
-        # 回覆最終結果（可自行調整訊息格式）
-        await interaction.response.edit_message(content=f"【{self.county} {region_name}】\n{tide_info}", view=None)
+        tide_embed = get_tide_data(today, location_id)
+        # 回覆結果，Embed 顯示表格資訊
+        await interaction.response.edit_message(content=f"【{self.county} {region_name}】", embed=tide_embed, view=None)
 
 class RegionSelectView(discord.ui.View):
     def __init__(self, county: str):
