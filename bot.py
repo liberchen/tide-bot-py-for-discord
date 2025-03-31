@@ -101,4 +101,6 @@ async def on_ready():
         synced = await bot.tree.sync()
         logging.debug(f"Slash Commands 已同步，共 {len(synced)} 個。")
     except Exception as e:
-        logging.error
+        logging.error(f"同步 Slash Commands 發生錯誤：{e}")
+
+bot.run(DISCORD_TOKEN)
