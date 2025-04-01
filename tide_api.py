@@ -52,9 +52,9 @@ def get_tide_data_by_date(date_str: str, location_id: str) -> tuple:
         tide_range = daily_record.get("TideRange", "未知")
         tide_times = daily_record.get("Time", [])
 
-        # 建立表格字串，欄位以直線 | 分隔
-        header = "時間|狀態|台灣高程|當地海平|海圖\n"
-        separator = "-----|----|--------|--------|----\n"
+        # 建立表格字串，欄位以直線 | 分隔，並調整分隔線長度
+        header = "時間|狀態|高程|海平|海圖\n"
+        separator = "----|---|---|---|----\n"
         rows = ""
         for tide in tide_times:
             dt_str = tide.get("DateTime")
@@ -69,7 +69,6 @@ def get_tide_data_by_date(date_str: str, location_id: str) -> tuple:
             val_twvd = heights.get("AboveTWVD", "N/A")
             val_local = heights.get("AboveLocalMSL", "N/A")
             val_chart = heights.get("AboveChartDatum", "N/A")
-            # 使用 | 作為分隔符號，不依賴空白間隔
             row = f"{time_formatted}|{tide_status}|{val_twvd}|{val_local}|{val_chart}\n"
             rows += row
 
