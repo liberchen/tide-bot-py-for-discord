@@ -53,8 +53,8 @@ def get_tide_data_by_date(date_str: str, location_id: str) -> tuple:
         tide_times = daily_record.get("Time", [])
 
         # 建立表格字串，欄位以直線 | 分隔，並調整分隔線長度
-        header = "時間|狀態|高程|海平|海圖\n"
-        separator = "----|---|---|---|----\n"
+        header = " 時間 |狀態|高程|海平|海圖\n"
+        separator = "-----|---|---|---|----\n"
         rows = ""
         for tide in tide_times:
             dt_str = tide.get("DateTime")
