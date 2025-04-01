@@ -42,9 +42,7 @@ def get_tide_data_by_date(date_str: str, location_id: str) -> tuple:
             return (f"{date_str} 查無潮汐預報資料", None)
 
         location_info = tide_forecasts[0].get("Location", {})
-        # 取得該日資料
         daily_list = location_info.get("TimePeriods", {}).get("Daily", [])
-        # 理論上指定日期會只回傳該日資料，但以防萬一取第一筆
         if not daily_list:
             logging.warning(f"{date_str} 無當日資料。")
             return (f"{date_str} 無當日資料", None)
@@ -54,9 +52,9 @@ def get_tide_data_by_date(date_str: str, location_id: str) -> tuple:
         tide_range = daily_record.get("TideRange", "未知")
         tide_times = daily_record.get("Time", [])
 
-        # 建立表格
-        header = f"{'時間':<6} {'狀態':<8} {'台灣高程':<10} {'當地海平':<10} {'海圖':<8}\n"
-        separator = "-" * 45 + "\n"
+        # 建立表格字串，欄位以直線 | 分隔
+        header = "時間|狀態|台灣高程|當地海平|海圖\n"
+        separator = "-----|----|--------|--------|----\n"
         rows = ""
         for tide in tide_times:
             dt_str = tide.get("DateTime")
@@ -71,11 +69,11 @@ def get_tide_data_by_date(date_str: str, location_id: str) -> tuple:
             val_twvd = heights.get("AboveTWVD", "N/A")
             val_local = heights.get("AboveLocalMSL", "N/A")
             val_chart = heights.get("AboveChartDatum", "N/A")
-            row = f"{time_formatted:<6} {tide_status:<8} {val_twvd:<10} {val_local:<10} {val_chart:<8}\n"
+            # 使用 | 作為分隔符號，不依賴空白間隔
+            row = f"{time_formatted}|{tide_status}|{val_twvd}|{val_local}|{val_chart}\n"
             rows += row
 
         table = "```" + header + separator + rows + "```"
-        # 欄位標題包含日期、農曆與潮汐範圍
         field_name = f"{date_str} (農曆 {lunar_date}) - 潮汐：{tide_range}"
         return (field_name, table)
     except Exception as e:
@@ -91,16 +89,14 @@ def get_tide_data(location_id: str) -> discord.Embed:
     today_str = taiwan_now.strftime("%Y-%m-%d")
     tomorrow_str = (taiwan_now + timedelta(days=1)).strftime("%Y-%m-%d")
 
-    # 呼叫 API 分別取得今天與明天的資料
+    # 分別取得今天與明天的潮汐資料
     field_today, table_today = get_tide_data_by_date(today_str, location_id)
     field_tomorrow, table_tomorrow = get_tide_data_by_date(tomorrow_str, location_id)
 
-    # 建立 Embed
     embed_title = "潮汐預報"
     embed_desc = f"資料來源：中央氣象署\n顯示日期：{today_str} 與 {tomorrow_str}"
     embed = discord.Embed(title=embed_title, description=embed_desc, color=0x3498DB)
 
-    # 若今天或明天有錯誤，則在對應欄位中顯示錯誤訊息
     if table_today:
         embed.add_field(name=field_today, value=table_today, inline=False)
     else:
