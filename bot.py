@@ -5,6 +5,7 @@ from discord import app_commands
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import logging
+import asyncio
 
 from tide_api import get_tide_data_for_county
 from locations import LOCATION_MAP
@@ -22,6 +23,13 @@ else:
 # 讀取自動提醒開關 (預設為 false)
 AUTO_REMINDER_ENABLED = os.environ.get("AUTO_REMINDER_ENABLED", "false").lower() == "true"
 logging.debug(f"AUTO_REMINDER_ENABLED 設定：{AUTO_REMINDER_ENABLED}")
+
+# 讀取提醒頻道名稱 (為字串)
+REMINDER_CHANNEL_NAME = os.environ.get("REMINDER_CHANNEL")
+if REMINDER_CHANNEL_NAME:
+    logging.debug(f"自動提醒頻道設定：{REMINDER_CHANNEL_NAME}")
+else:
+    logging.debug("未設定自動提醒頻道，將使用 DM 傳送提醒訊息。")
 
 # 啟用 members 與 presences intents
 intents = discord.Intents.default()
@@ -105,7 +113,8 @@ async def mytide(interaction: discord.Interaction):
         await interaction.response.send_message(embed=tide_embed, ephemeral=True)
     else:
         await interaction.response.send_message(
-            "未能根據您的顯示名稱偵測到所在縣市，請使用 /tide 指令手動選擇。", ephemeral=True
+            "未能根據您的顯示名稱偵測到所在縣市，請使用 /tide 指令手動選擇。",
+            ephemeral=True
         )
 
 # -------------------------------
@@ -134,15 +143,35 @@ async def on_presence_update(before: discord.Member, after: discord.Member):
         if detected_county:
             logging.debug(f"從顯示名稱中偵測到縣市：{detected_county}")
             try:
-                dm_channel = await member.create_dm()
-                tide_embed = get_tide_data_for_county(detected_county)
-                await dm_channel.send(
-                    f"嗨，根據您的顯示名稱，推測您位於 {detected_county}，以下是該縣所有區的潮汐預報：",
-                    embed=tide_embed
-                )
+                # 如果設定了提醒頻道名稱，則嘗試從所有公會中搜尋符合該名稱的頻道
+                reminder_channel = None
+                if REMINDER_CHANNEL_NAME:
+                    for guild in bot.guilds:
+                        channel = discord.utils.get(guild.text_channels, name=REMINDER_CHANNEL_NAME)
+                        if channel:
+                            reminder_channel = channel
+                            break
+                    if reminder_channel:
+                        logging.debug(f"找到提醒頻道：{reminder_channel.name} (ID: {reminder_channel.id})")
+                    else:
+                        logging.error(f"找不到名稱為 '{REMINDER_CHANNEL_NAME}' 的提醒頻道。")
+                # 若找到提醒頻道則在該頻道發送訊息，否則使用 DM 傳送
+                if reminder_channel:
+                    tide_embed = get_tide_data_for_county(detected_county)
+                    await reminder_channel.send(
+                        f"{member.mention} 嗨，根據您的顯示名稱，推測您位於 {detected_county}，以下是該縣所有區的潮汐預報：",
+                        embed=tide_embed
+                    )
+                else:
+                    dm_channel = await member.create_dm()
+                    tide_embed = get_tide_data_for_county(detected_county)
+                    await dm_channel.send(
+                        f"嗨，根據您的顯示名稱，推測您位於 {detected_county}，以下是該縣所有區的潮汐預報：",
+                        embed=tide_embed
+                    )
                 logging.debug(f"已向成員 {member.id} 發送自動潮汐資訊。")
             except Exception as e:
-                logging.error(f"發送 DM 給成員 {member.id} 失敗：{e}")
+                logging.error(f"發送提醒訊息給成員 {member.id} 失敗：{e}")
         else:
             logging.debug(f"未從成員 {member.id} 的顯示名稱中偵測到縣市資訊。")
 
