@@ -110,21 +110,20 @@ async def mytide(interaction: discord.Interaction):
     if detected_county:
         logging.debug(f"從顯示名稱中偵測到縣市：{detected_county}")
         tide_embed = get_tide_data_for_county(detected_county)
-        if not interaction.response.is_done():
-            await interaction.response.send_message(embed=tide_embed, ephemeral=True)
-        else:
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(embed=tide_embed, ephemeral=True)
+            else:
+                await interaction.followup.send(embed=tide_embed, ephemeral=True)
+        except discord.errors.NotFound as e:
+            logging.error(f"Interaction not found, using followup: {e}")
             await interaction.followup.send(embed=tide_embed, ephemeral=True)
     else:
+        msg = "未能根據您的顯示名稱偵測到所在縣市，請使用 /tide 指令手動選擇。"
         if not interaction.response.is_done():
-            await interaction.response.send_message(
-                "未能根據您的顯示名稱偵測到所在縣市，請使用 /tide 指令手動選擇。",
-                ephemeral=True
-            )
+            await interaction.response.send_message(msg, ephemeral=True)
         else:
-            await interaction.followup.send(
-                "未能根據您的顯示名稱偵測到所在縣市，請使用 /tide 指令手動選擇。",
-                ephemeral=True
-            )
+            await interaction.followup.send(msg, ephemeral=True)
 
 # -------------------------------
 # 當成員首次上線時自動發送潮汐資訊（僅在 AUTO_REMINDER_ENABLED 為 true 時啟用）
